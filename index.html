@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ร้านอาหารและโรงเรียนในกรุงเทพ</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.27/esri/themes/light/main.css">
+  <script src="https://js.arcgis.com/4.27/"></script>
+  <style>
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+
+    #viewDiv {
+      height: 95%;
+      margin: 0;
+      padding: 0;
+    }
+  </style>
+  <script>
+    // *** Replace with your own API key ***
+    var esriConfig = {
+      apiKey:
+        "AAPTxy8BH1VEsoebNVZXo8HurEfv-sIq0CaI4woSF6cXUJguirTOlkZWqLQ-tJUGKHFHSmWJWD04dBFF9tcFtcG1XRkCDw5ihJLMHkAcyTkqDEHzm7A7gXBFiscrAxRRvcKNZpIhl83nysiZkkxRWEsWfcRe_fEeRmLlbXYaNIp8nZsdEcjLjM88qqilBOFZ_M70De_x-vhb0fJ0pGEmWJdIPaxouHh_hXjSPcFT-R0tg7s.AT1_p9FsNlDR",
+    };
+  </script>
+</head>
+
+<body>
+  <div id="viewDiv"></div>
+
+  <script>
+    require([
+      "esri/Map",
+      "esri/views/MapView",
+      "esri/layers/CSVLayer",
+      "esri/layers/FeatureLayer",
+      "esri/renderers/UniqueValueRenderer",
+      "esri/renderers/HeatmapRenderer",
+      "esri/widgets/Search",
+      "esri/widgets/Editor",
+      "esri/widgets/Sketch", "esri/layers/GraphicsLayer", "esri/geometry/Extent"
+
+    ], function (
+      Map,
+      MapView,
+      CSVLayer,
+      FeatureLayer,
+      UniqueValueRenderer,
+      HeatmapRenderer,
+      Search,
+      Editor,
+      Sketch, GraphicsLayer, Extent
+    ) {
+
+
+      esriConfig.apiKey =
+        "AAPTxy8BH1VEsoebNVZXo8HurEfv-sIq0CaI4woSF6cXUJguirTOlkZWqLQ-tJUGKHFHSmWJWD04dBFF9tcFtcG1XRkCDw5ihJLMHkAcyTkqDEHzm7A7gXBFiscrAxRRvcKNZpIhl83nysiZkkxRWEsWfcRe_fEeRmLlbXYaNIp8nZsdEcjLjM88qqilBOFZ_M70De_x-vhb0fJ0pGEmWJdIPaxouHh_hXjSPcFT-R0tg7s.AT1_p9FsNlDR";
+
+        const restaurantData = `
+        name,rating,hours,address,longitude,latitude,image
+        "เจ๊ไฝ ประตูผี",5,"10:00 - 22:00","ถ.มหาไชย",100.5018,13.7563,"https://lh3.googleusercontent.com/p/AF1QipNPCp7IKMfeL_yZrT8A3qnB_oNjSzt3NMYZaWv7=s680-w680-h510"
+        "Savoey Seafood",4.2,"11:00 - 23:00","สุขุมวิท",100.5318,13.7453,"https://res.klook.com/images/fl_lossy.progressive,q_65/c_fill,w_1295,h_720/w_80,x_15,y_15,g_south_west,l_Klook_water_br_trans_yhcmh3/activities/h6comy7wgrh3suewg9d3/SavoeySeafoodCoatTerminal21Pattaya.jpg"
+        "Thipsamai ผัดไทย",4.6,"16:00 - 01:00","ถ.มหาไชย",100.501,13.737,"https://img.wongnai.com/p/1920x0/2021/04/11/d189ff630310466dae2beac8d222de38.jpg"
+        "Err Urban Rustic Thai",4.3,"11:00 - 23:00","เจริญกรุง",100.5341,13.7291,"https://lh3.googleusercontent.com/p/AF1QipMXn9dUJ4G7D4gRAipO6WkxuJT4q23LlUy40Wzh=s680-w680-h510"
+        "Bo.lan",4.7,"18:00 - 22:30","สุขุมวิท",100.5241,13.7451,"https://lh3.googleusercontent.com/p/AF1QipPhB1Io5XV3aBIhxBis0fHyu_NdMPv8mWIGeZNP=s680-w680-h510"
+        "บ้านขนิษฐา",4.5,"11:00 - 22:00","สาทร",100.5153,13.7321,"https://lh3.googleusercontent.com/p/AF1QipPf1x9QCR6nXl_LybtM_1Pgve4YnGAMEe4sjf4F=s680-w680-h510"
+        "Somtum Der",4.3,"11:00 - 22:00","ศาลาแดง",100.5199,13.7575,"https://lh3.googleusercontent.com/p/AF1QipNijJrfpjwlifDhRiVvqjnGjWiip3REuc2rPV6A=s680-w680-h510"
+        "Blue Elephant",4.6,"11:00 - 22:00","สาทร",100.5267,13.7234,"https://lh3.googleusercontent.com/p/AF1QipNZFtTO10JKp1YEppXvpIhKjZL94-RRQVef2mcE=s680-w680-h510"
+        "Cabbages & Condoms",4.4,"11:00 - 23:00","สุขุมวิท",100.5188,13.75,"https://lh3.googleusercontent.com/gps-cs-s/AB5caB-EtTiVkPn6AjjeOIhn1aQbvwK729iHuyeatopLKB2o0YrkTMvZYhIozpB5lqQWU4vvLnN7sQOtcPcZlAKZ6qvVX4Z-cR9M4NSqz5Yc5PGurZL2JAk1BTTFAFXeS6l1ynER_D4K=s680-w680-h510"
+        "Supanniga Eating Room",4.5,"11:00 - 22:00","เจริญนคร",100.5102,13.7392,"https://res.klook.com/images/fl_lossy.progressive,q_65/c_fill,w_1295,h_720/w_80,x_15,y_15,g_south_west,l_Klook_water_br_trans_yhcmh3/activities/erldaapw3nfpoyfvkker/%E0%B8%AB%E0%B9%89%E0%B8%AD%E0%B8%87%E0%B8%97%E0%B8%B2%E0%B8%99%E0%B8%82%E0%B9%89%E0%B8%B2%E0%B8%A7%E0%B8%AA%E0%B8%B8%E0%B8%9E%E0%B8%A3%E0%B8%A3%E0%B8%93%E0%B8%B4%E0%B8%81%E0%B8%B2%E0%B8%A3(SupannigaEatingRoom)%E0%B8%A3%E0%B8%B4%E0%B8%A1%E0%B9%81%E0%B8%A1%E0%B9%88%E0%B8%99%E0%B9%89%E0%B8%B3%E0%B9%80%E0%B8%88%E0%B9%89%E0%B8%B2%E0%B8%9E%E0%B8%A3%E0%B8%B0%E0%B8%A2%E0%B8%B2(%E0%B8%A1%E0%B8%B4%E0%B8%8A%E0%B8%A5%E0%B8%B4%E0%B8%99%E0%B9%84%E0%B8%81%E0%B8%94%E0%B9%8C2020).jpg"
+        "Paste Bangkok",4.8,"12:00 - 23:00","ราชดำริ",100.5111,13.741,"https://lh3.googleusercontent.com/p/AF1QipNjSpxxFTLVjX1tO480RHJj8bYjEsT3U3MXQ0Px=s680-w680-h510"
+        "The Local",4.2,"11:00 - 23:00","อโศก",100.5623,13.7382,"https://img.wongnai.com/p/1920x0/2018/11/23/8db9dfcb774a4d2d8b857e15f1b20e81.jpg"
+        "Raan Jay Fai",4.7,"12:00 - 22:00","ประตูผี",100.5021,13.7549,"https://lh3.googleusercontent.com/gps-cs-s/AB5caB8KX7mplyVgBoKu7E3BZEtu9hJyt72cXAAQmYL5RKXRw4ubJ5KUnPWMPPqSaUCPYoX1UOs9KTZirhBpi1RY5Ndh6TFPpP6VES-VIpKgRfxzOzsG_DA9utAyXOgvvtv2s5P01COUbA=s680-w680-h510"
+        "Soul Food Mahanakorn",4.3,"17:30 - 23:00","ทองหล่อ",100.576,13.7281,"https://img.wongnai.com/p/400x0/2019/06/21/d50d021e915d470f82a64b4e9b8b9e4d.jpg"
+        `;
+        
+      const blob = new Blob([restaurantData], { type: "text/csv" });
+      const csvUrl = URL.createObjectURL(blob);
+
+      const classRenderer = {
+        type: "class-breaks",
+        field: "rating",
+        classBreakInfos: [
+          {
+            minValue: 1,
+            maxValue: 4.2,
+            symbol: {
+              type: "picture-marker",
+              url: "https://cdn-icons-png.flaticon.com/128/9489/9489913.png",
+              width: "48px",
+              height: "48px"
+            },
+            label: "ต่ำกว่า 4.2 ดาว"
+          },
+          {
+            minValue: 4.3,
+            maxValue: 4.6,
+            symbol: {
+              type: "picture-marker",
+              url: "https://cdn-icons-png.flaticon.com/128/9489/9489936.png",
+              width: "48px",
+              height: "48px"
+            },
+            label: "มากกว่า 4.2 ดาว"
+          },
+          {
+            minValue: 4.7,
+            maxValue: 5,
+            symbol: {
+              type: "picture-marker",
+              url: "https://cdn-icons-png.flaticon.com/128/5764/5764093.png",
+              width: "48px",
+              height: "48px"
+            },
+            label: "มากกว่า 4.6 ดาว"
+          },
+        ]
+      };
+
+
+      const RestaurantLayer = new CSVLayer({
+        url: csvUrl,
+        latitudeField: "latitude",
+        longitudeField: "longitude",
+        popupTemplate: {
+          title: "{name}",
+          content: `
+              <b> เวลาทำการ </b> {hours} <br>
+              <b>📍 ที่อยู่:</b> {address} <br>
+              <b>⭐ รีวิว:</b> {rating} / 5 <br>
+              <img src="{image}" alt="{name}" width="100%">
+          `,
+
+        },
+        renderer: classRenderer,
+      });
+
+
+      const uniqueValueRenderer = new UniqueValueRenderer({
+        field: "SchoolType",
+        uniqueValueInfos: [
+          {
+            value: "เอกชน",
+            symbol: {
+              type: "picture-marker",
+              url: "https://cdn-icons-png.flaticon.com/128/167/167707.png",
+              width: "48px",
+              height: "48px",
+            },
+          },
+          {
+            value: "รัฐบาล",
+            symbol: {
+              type: "picture-marker",
+              url: "https://cdn-icons-png.flaticon.com/128/2602/2602414.png",
+              width: "48px",
+              height: "48px",
+            },
+          },
+          // Add more types as needed
+        ],
+      });
+
+
+      const renderer = {
+        type: "heatmap",
+        colorStops: [
+          { color: "rgba(0, 0, 0, 0)", ratio: 0 },        // โปร่งใส
+          { color: "#ff9900", ratio: 0.2 },               // เหลืองเข้ม
+          { color: "#ff6600", ratio: 0.4 },               // ส้มเข้ม
+          { color: "#ff3300", ratio: 0.6 },               // แดงอมส้ม
+          { color: "#cc2200", ratio: 0.8 },               // แดงเข้ม
+          { color: "#800000", ratio: 1 }                  // น้ำตาลเข้มเกือบดำ
+        ],
+        maxDensity: 0.03,
+        minDensity: 0.001,
+        radius: 10
+      };
+
+      const Incident_renderer = {
+        type: "heatmap",
+        colorStops: [
+          { color: "rgba(0, 0, 0, 0)", ratio: 0 },        // โปร่งใส
+          { color: "#7a42f4", ratio: 0.2 },               // ม่วงสดเข้ม
+          { color: "#5a00e0", ratio: 0.4 },               // ม่วงน้ำเงิน
+          { color: "#4b0082", ratio: 0.6 },               // อินดิโก้เข้ม
+          { color: "#2e003e", ratio: 0.8 },               // ม่วงดำ
+          { color: "#1a001f", ratio: 1 }                  // ดำอมม่วงลึกๆ
+        ],
+        maxDensity: 0.04,  // เพิ่มความหนาแน่นนิดหน่อยให้ดูชัดขึ้น
+        minDensity: 0.001,
+        radius: 8          // ลดขนาดจุดลงเพื่อเน้นความหนาแน่น
+      };
+
+      // Step 2: Create a Feature Layer
+      const featureLayer = new FeatureLayer({
+        url: "https://services7.arcgis.com/8gRphOHyNL34UiRi/arcgis/rest/services/School/FeatureServer",
+        outFields: ["*"], // Fetch all fields
+        renderer: renderer, // Start with heatmap at low zoom levels
+        popupTemplate: {
+          title: "{SchoolType}", // Display the Incident Type as the title
+          content: `
+              <b>School Type:</b> {SchoolType}<br>
+              <b>School Name:</b> {SchoolName}<br>
+              <b>Address:</b> {Address}<br>
+            `,
+        },
+      });
+
+      // Step 4: Create the map and view
+      const map = new Map({
+        basemap: "streets-navigation-vector",
+        layers: [featureLayer, RestaurantLayer], // Add the FeatureLayer to the map
+      });
+
+      const view = new MapView({
+        container: "viewDiv",
+        map: map,
+        center: [100.523186, 13.736717], // Example: Bangkok coordinates
+        zoom: 12,
+      });
+
+
+
+      // Step 5: Add a Search widget
+      const search = new Search({
+        view: view,
+        sources: [
+          {
+            layer: RestaurantLayer,
+            searchFields: ["SchoolName", "Address"],
+            displayField: "SchoolName",
+            name: "ข้อมูลจาก CSV",
+            outFields: ["*"],
+            placeholder: "🔍 ค้นหาชื่อร้านหรือที่อยู่"
+          },
+          {
+            layer: featureLayer,
+            searchFields: ["Address", "SchoolName", "SchoolType"], // Fields to search
+            displayField: "SchoolType", // Field to display in results
+            exactMatch: false,
+            outFields: ["*"], // Fetch all fields in search results
+            name: "School Search",
+            placeholder: "Search by description, name, or type",
+            suggestionTemplate: "{SchoolType} - {Address} - {SchoolName}", // Template for suggestions
+          },
+
+        ],
+      });
+      view.ui.add(search, "top-right");
+
+      // Step 6: Add the Editor widget
+      const editor = new Editor({
+        view: view,
+        layerInfos: [
+          {
+            layer: featureLayer,
+            fieldConfig: [
+              {
+                name: "SchoolType",
+                label: "School Type",
+                editable: true,
+              },
+            ],
+          },
+        ],
+      });
+      view.ui.add(editor, "bottom-right");
+
+
+      // Step 7: Toggle Renderers Based on Zoom Level
+      view.when(() => {
+        view.watch("zoom", (zoomLevel) => {
+          console.log("Current Zoom Level:", zoomLevel);
+          if (zoomLevel >= 13) {
+            featureLayer.renderer = uniqueValueRenderer;
+            RestaurantLayer.renderer = classRenderer;
+
+          } else {
+            featureLayer.renderer = Incident_renderer;
+            RestaurantLayer.renderer = renderer;
+          }
+        });
+      });
+
+
+      const graphicsLayer = new GraphicsLayer();
+      map.add(graphicsLayer);
+
+      const sketch = new Sketch({
+        view: view,
+        layer: graphicsLayer,
+        creationMode: "update"
+      });
+      view.ui.add(sketch, "bottom-left");
+
+      document.getElementById("drawRect").addEventListener("click", function () {
+        sketch.create("rectangle");
+      });
+
+      document.getElementById("clear").addEventListener("click", function () {
+        graphicsLayer.removeAll();
+        RestaurantLayer.featureEffect = null;
+        featureLayer.featureEffect = null;
+      });
+
+      sketch.on("create", function (event) {
+        if (event.state === "complete") {
+          const extent = event.graphic.geometry.extent;
+          RestaurantLayer.featureEffect = {
+            filter: {
+              geometry: extent
+            },
+            includedEffect: "opacity(1) drop-shadow(3px, 3px, 3px, black)",
+            excludedEffect: "opacity(0.2) grayscale(100%)"
+          };
+          featureLayer.featureEffect = {
+            filter: {
+              geometry: extent
+            },
+            includedEffect: "opacity(1) drop-shadow(3px, 3px, 3px, red)",
+            excludedEffect: "opacity(0.2) grayscale(100%)"
+          };
+        }
+      });
+    });
+  </script>
+
+</body>
+
+</html>
